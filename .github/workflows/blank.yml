@@ -3,7 +3,7 @@ name: EKS Terraform CI/CD
 on:
   push:
     branches:
-      - main   # Only triggers on pushes to main
+      - main
   workflow_dispatch:
     inputs:
       action:
@@ -75,16 +75,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: ap-south-1
 
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --region ap-south-1 --name devops-eks
+      - name: Wait for EKS Cluster and Update Kubeconfig
+        run: |
+          # Wait for cluster to be active
+          aws eks wait cluster-active --name devops-eks --region ap-south-1
+
+          # Wait for nodegroup to be active (replace devops_nodes with your nodegroup name)
+          aws eks wait nodegroup-active --cluster-name devops-eks --nodegroup-name devops_nodes --region ap-south-1
+
+          # Update kubeconfig for kubectl
+          aws eks update-kubeconfig --region ap-south-1 --name devops-eks
         working-directory: eks-terraform
 
-      - name: Deploy Application
+      - name: Deploy Kubernetes Manifests
         run: |
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
         working-directory: eks-terraform
 
       - name: Verify Deployment
-        run: kubectl get pods
+        run: kubectl get pods -o wide
         working-directory: eks-terraform
