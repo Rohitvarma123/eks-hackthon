@@ -1,98 +1,72 @@
-name: EKS Terraform CI/CD
+name: EKS Terraform Deploy
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
-    inputs:
-      action:
-        description: 'Choose action: deploy or destroy'
-        required: true
-        default: 'deploy'
-        type: choice
-        options:
-          - deploy
-          - destroy
 
 jobs:
+
   terraform:
     name: Terraform Infrastructure
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: eks-terraform
+
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-          aws-region: ap-south-1
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region: ap-northeast-1
 
-      - name: Terraform Init
-        run: terraform init
-        working-directory: eks-terraform
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
 
-      - name: Terraform Validate
-        if: ${{ github.event.inputs.action == 'deploy' }}
-        run: terraform validate
-        working-directory: eks-terraform
+    - name: Terraform Init
+      run: terraform init
 
-      - name: Terraform Plan
-        if: ${{ github.event.inputs.action == 'deploy' }}
-        run: terraform plan
-        working-directory: eks-terraform
+    - name: Terraform Validate
+      run: terraform validate
 
-      - name: Terraform Apply
-        if: ${{ github.event.inputs.action == 'deploy' }}
-        run: terraform apply -auto-approve
-        working-directory: eks-terraform
+    - name: Terraform Plan
+      run: terraform plan
 
-      - name: Terraform Destroy
-        if: ${{ github.event.inputs.action == 'destroy' }}
-        run: terraform destroy -auto-approve
-        working-directory: eks-terraform
+    - name: Terraform Apply
+      run: terraform apply -auto-approve
 
   deploy:
     name: Deploy to EKS
-    runs-on: ubuntu-latest
     needs: terraform
-    if: ${{ github.event.inputs.action == 'deploy' }}
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
-          aws-region: ap-south-1
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Wait for EKS Cluster and Update Kubeconfig
-        run: |
-          # Wait for cluster to be active
-          aws eks wait cluster-active --name devops-eks --region ap-south-1
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+        aws-region: ap-northeast-1
 
-          # Wait for nodegroup to be active (replace devops_nodes with your nodegroup name)
-          aws eks wait nodegroup-active --cluster-name devops-eks --nodegroup-name devops_nodes --region ap-south-1
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --region ap-northeast-1 --name dev-eks-cluster
 
-          # Update kubeconfig for kubectl
-          aws eks update-kubeconfig --region ap-south-1 --name devops-eks
-        working-directory: eks-terraform
+    - name: Deploy Application
+      run: |
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
 
-      - name: Deploy Kubernetes Manifests
-        run: |
-          kubectl apply -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml
-        working-directory: eks-terraform
-
-      - name: Verify Deployment
-        run: kubectl get pods -o wide
-        working-directory: eks-terraform
+    - name: Verify Deployment
+      run: kubectl get pods
