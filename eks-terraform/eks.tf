@@ -3,7 +3,11 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "20.8.4"
 
+<<<<<<< HEAD
   cluster_name    = "aws-devops"
+=======
+  cluster_name    = "devsecops-cluster"
+>>>>>>> 39396ee494baa5019d8d4776651b57de08b37ccb
   cluster_version = "1.29"
 
   vpc_id     = module.vpc.vpc_id

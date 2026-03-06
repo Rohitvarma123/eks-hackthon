@@ -7,8 +7,13 @@ module "vpc" {
   cidr = "10.0.0.0/16"
 
   azs = [
+<<<<<<< HEAD
     "ap-southeast-2a",
     "ap-southeast-2c"
+=======
+    "ap-southeast-2c",
+    "ap-southeast-2a"
+>>>>>>> 39396ee494baa5019d8d4776651b57de08b37ccb
   ]
 
   public_subnets = [
