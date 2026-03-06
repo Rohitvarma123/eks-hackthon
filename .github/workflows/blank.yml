@@ -61,7 +61,7 @@ jobs:
 
     - name: Update kubeconfig
       run: |
-        aws eks update-kubeconfig --region ap-southeast-2 --name dev-rohit
+        aws eks update-kubeconfig --region ap-southeast-2 --name devsecops-cluster
 
     - name: Deploy Application
       run: |
