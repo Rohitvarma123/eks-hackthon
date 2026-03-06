@@ -78,9 +78,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: ap-south-1
 
+      - name: Install kubectl
+        run: |
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          sudo mv kubectl /usr/local/bin/
+
       - name: Update kubeconfig
         run: |
-          aws eks update-kubeconfig --region ap-south-1 --name todaycluster
+          aws eks update-kubeconfig --region ap-south-1 --name devsecops-cluster
+
+      - name: Wait for nodes to be ready
+        run: |
+          kubectl wait --for=condition=Ready nodes --all --timeout=600s
 
       - name: Deploy Kubernetes Manifests
         run: |
@@ -89,7 +99,3 @@ jobs:
 
       - name: Verify Deployment
         run: kubectl get pods -o wide
-
-
-        
-
